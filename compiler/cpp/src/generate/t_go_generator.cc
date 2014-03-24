@@ -116,6 +116,7 @@ public:
     void generate_go_struct(t_struct* tstruct, bool is_exception);
     void generate_go_struct_definition(std::ofstream& out, t_struct* tstruct, bool is_xception = false, bool is_result = false);
     void generate_isset_helpers(std::ofstream& out, t_struct* tstruct, const string& tstruct_name, bool is_result = false);
+    void generate_get_helpers(std::ofstream& out, t_struct* tstruct, const string& tstruct_name, bool is_result = false);
     void generate_go_struct_reader(std::ofstream& out, t_struct* tstruct, const string& tstruct_name, bool is_result = false);
     void generate_go_struct_writer(std::ofstream& out, t_struct* tstruct, const string& tstruct_name, bool is_result = false);
     void generate_go_function_helpers(t_function* tfunction);
@@ -1054,6 +1055,7 @@ void t_go_generator::generate_go_struct_definition(ofstream& out,
 
     out << "}" << endl << endl;
     generate_isset_helpers(out, tstruct, tstruct_name, is_result);
+    generate_get_helpers(out, tstruct, tstruct_name, is_result);
     generate_go_struct_reader(out, tstruct, tstruct_name, is_result);
     generate_go_struct_writer(out, tstruct, tstruct_name, is_result);
 
@@ -1093,6 +1095,36 @@ void t_go_generator::generate_isset_helpers(ofstream& out,
             indent_up();
             out <<
                 indent() << "return p." << field_name << " != nil" << endl;
+            indent_down();
+            out <<
+                indent() << "}" << endl << endl;
+        }
+    }
+}
+
+/**
+ * Generates the Get helper methods for a struct
+ */
+void t_go_generator::generate_get_helpers(ofstream& out,
+        t_struct* tstruct,
+        const string& tstruct_name,
+        bool is_result)
+{
+    const vector<t_field*>& fields = tstruct->get_members();
+    vector<t_field*>::const_iterator f_iter;
+    const string escaped_tstruct_name(escape_string(tstruct->get_name()));
+
+    for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
+        const string field_name(publicize(variable_name_to_go_name(escape_string((*f_iter)->get_name()))));
+        if ((*f_iter)->get_req() == t_field::T_OPTIONAL && !(*f_iter)->get_type()->is_struct()) {
+            out <<
+                indent() << "func (p *" << tstruct_name << ") Get" << field_name << "() (val " << type_to_go_type((*f_iter)->get_type()) << ") {" << endl;
+            indent_up();
+            out <<
+                indent() << "if x := p." << field_name << "; x != nil {" << endl;
+                out << indent() << indent() << "val = *x" << endl;
+                out << indent() << "}" << endl;
+                out << indent() << "return" << endl;
             indent_down();
             out <<
                 indent() << "}" << endl << endl;
